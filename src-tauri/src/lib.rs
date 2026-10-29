@@ -3,6 +3,7 @@ mod desktop;
 mod reminder;
 mod win_notify;
 use std::str::FromStr;
+use std::sync::atomic::{AtomicU64,Ordering};
 use std::sync::{Mutex, OnceLock};
 use tauri::{Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
@@ -12,13 +13,15 @@ use db::{Db, Task, SaveTask, CompleteTask, ReorderTasks, CopyTaskToToday};
 #[derive(Clone,serde::Serialize,serde::Deserialize)]
 #[serde(default)]
 struct Preferences {
-    color:String, opacity:f64, x:Option<i32>, y:Option<i32>, shortcut:String,
+    color:String, opacity:f64, x:Option<i32>, y:Option<i32>,
+    panel_width:Option<f64>, panel_height:Option<f64>,
+    shortcut:String,
     shortcut_show_list:String,
     show_completed:bool, notifications_preview:bool,
 }
 fn default_show_list_shortcut()->String{"Ctrl+Alt+L".into()}
 impl Default for Preferences {
-    fn default()->Self{Self{color:"cream".into(),opacity:0.9,x:None,y:None,shortcut:"Ctrl+Alt+N".into(),shortcut_show_list:default_show_list_shortcut(),show_completed:false,notifications_preview:true}}
+    fn default()->Self{Self{color:"cream".into(),opacity:0.9,x:None,y:None,panel_width:None,panel_height:None,shortcut:"Ctrl+Alt+N".into(),shortcut_show_list:default_show_list_shortcut(),show_completed:false,notifications_preview:true}}
 }
 
 struct State {
@@ -155,21 +158,38 @@ fn safe_position(window:&tauri::WebviewWindow,requested:Option<(i32,i32)>)->db::
     let p=primary.position();let s=primary.size();
     Ok((p.x+(s.width as i32-400).max(0),p.y+30))
 }
+const PANEL_DEF_W:f64=380.0;
+const PANEL_DEF_H:f64=460.0;
+static PANEL_RESIZE_GEN:AtomicU64=AtomicU64::new(0);
+fn set_panel_min_size(window:&tauri::WebviewWindow)->Result<(),String>{
+    window.set_min_size(Some(tauri::Size::Logical(tauri::LogicalSize::new(PANEL_DEF_W,PANEL_DEF_H)))).map_err(|e|e.to_string())
+}
+fn apply_panel_size(window:&tauri::WebviewWindow,prefs:&Preferences)->Result<(),String>{
+    set_panel_min_size(window)?;
+    let w=prefs.panel_width.filter(|v|*v>=PANEL_DEF_W).unwrap_or(PANEL_DEF_W);
+    let h=prefs.panel_height.filter(|v|*v>=PANEL_DEF_H).unwrap_or(PANEL_DEF_H);
+    window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(w,h))).map_err(|e|e.to_string())
+}
+fn save_panel_size(window:&tauri::WebviewWindow,state:&State){
+    let Ok(scale)=window.scale_factor() else{return;};
+    let Ok(size)=window.inner_size() else{return;};
+    let w=size.width as f64/scale;
+    let h=size.height as f64/scale;
+    if w<PANEL_DEF_W||h<PANEL_DEF_H{return;}
+    let _=with_db(state,|db|{let mut prefs:Preferences=db.setting("preferences")?.unwrap_or_default();prefs.panel_width=Some(w);prefs.panel_height=Some(h);db.set_setting("preferences",&prefs)});
+}
 fn ensure_main_panel(window:&tauri::WebviewWindow)->db::Result<()> {
-    const MIN_W:f64=300.0;
-    const MIN_H:f64=240.0;
-    const DEF_W:f64=380.0;
-    const DEF_H:f64=460.0;
     #[cfg(target_os="windows")]
     if let Ok(handle)=window.hwnd(){
         let _=desktop::detach(handle.0 as isize);
     }
+    set_panel_min_size(window).map_err(|e|e.to_string())?;
     let scale=window.scale_factor().map_err(|e|e.to_string())?;
     let size=window.inner_size().map_err(|e|e.to_string())?;
-    let min_w=(MIN_W*scale).round() as u32;
-    let min_h=(MIN_H*scale).round() as u32;
+    let min_w=(PANEL_DEF_W*scale).round() as u32;
+    let min_h=(PANEL_DEF_H*scale).round() as u32;
     if size.width<min_w || size.height<min_h {
-        window.set_size(tauri::PhysicalSize::new((DEF_W*scale).round() as u32,(DEF_H*scale).round() as u32)).map_err(|e|e.to_string())?;
+        window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(PANEL_DEF_W,PANEL_DEF_H))).map_err(|e|e.to_string())?;
     }
     Ok(())
 }
@@ -192,6 +212,7 @@ fn prepare_panel(window:tauri::WebviewWindow,state:tauri::State<State>)->db::Res
         let _=desktop::detach(handle.0 as isize);
     }
     ensure_main_panel(&window)?;
+    apply_panel_size(&window,&prefs).map_err(|e|e.to_string())?;
     window.set_position(tauri::PhysicalPosition::new(x,y)).map_err(|e|e.to_string())?;
     window.set_skip_taskbar(false).map_err(|e|e.to_string())?;
     window.set_always_on_top(false).map_err(|e|e.to_string())?;
@@ -410,6 +431,21 @@ pub fn run(){
             Ok(())
         })
         .on_window_event(|window,event|{
+            if window.label()=="main" {
+                if let tauri::WindowEvent::Resized(_)=event {
+                    if window.try_state::<State>().is_some() {
+                        let token=PANEL_RESIZE_GEN.fetch_add(1,Ordering::SeqCst)+1;
+                        let handle=window.app_handle().clone();
+                        std::thread::spawn(move||{
+                            std::thread::sleep(std::time::Duration::from_millis(350));
+                            if PANEL_RESIZE_GEN.load(Ordering::SeqCst)!=token{return;}
+                            if let Some(w)=handle.get_webview_window("main") {
+                                if let Some(st)=handle.try_state::<State>(){save_panel_size(&w,&st);}
+                            }
+                        });
+                    }
+                }
+            }
             if let tauri::WindowEvent::Destroyed=event {
                 if let Some(state)=window.try_state::<State>(){
                     if let Ok(mut dirty)=state.dirty_windows.lock(){dirty.remove(window.label());}

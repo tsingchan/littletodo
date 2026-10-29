@@ -131,6 +131,12 @@
 - 相对 V0.4.1：设置内 **Agent 使用指南** 独立窗（嵌入 `docs/AGENT-READONLY.md`）；整点提醒 `Scenario::Reminder` 与 **查看待办** / **知道了** 已随包发布。
 - 验证：`npm run check` 通过（3 Markdown、14 Rust + 1 ignored）。安装包路径：`src-tauri/target/release/bundle/nsis/LittleTodo_0.4.2_x64-setup.exe`。实机 Agent 指南窗与整点提醒待用户确认。
 
+## V0.4.5 发布构建（2026-10-29）
+
+- 对象：`LittleTodo_0.4.5_x64-setup.exe`，1924345 字节，SHA256 `A14F17BD60E675EE4A90C68DEBA7F7DF14DCDE35107EC3D4134CC300D9C9F702`；构建目录 `littletodo.exe`（4979712 字节）SHA256 `B90088BE492B7C9B9D71AC691DE5CF36EF14A358FB8F67F2F4DC858CF5332548`。Authenticode 未签名。
+- 相对 V0.4.2：修正列表「下次提醒」为工作日 9–18 **整点**；待办列表支持右/底/角拖动**放大**（380×460 为默认且最小，尺寸持久化）。
+- 验证：`npm run check` 通过（3 Markdown、14 Rust + 1 ignored）。安装包：`src-tauri/target/release/bundle/nsis/LittleTodo_0.4.5_x64-setup.exe`。整点文案与列表缩放实机待用户确认。
+
 ## 整点提醒停留（2026-10-29，已含于 V0.4.2）
 
 - 需求：人暂时离开时，短 Toast 易错过，希望回到电脑前仍能看到提醒。

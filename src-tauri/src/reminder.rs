@@ -8,8 +8,8 @@ pub fn slot_for<T:TimeZone>(local:&DateTime<T>,zone:&str)->Option<String> where 
 }
 pub fn next_reminder_after(from:DateTime<chrono::Local>)->DateTime<chrono::Local>{
     use chrono::Duration;
-    let mut t=from.with_second(0).unwrap().with_nanosecond(0).unwrap();
-    if from.minute()!=0 || from.second()>0 || from.nanosecond()>0{t+=Duration::hours(1);}
+    let mut t=from.with_minute(0).unwrap().with_second(0).unwrap().with_nanosecond(0).unwrap();
+    if from.minute()!=0||from.second()!=0||from.nanosecond()!=0{t+=Duration::hours(1);}
     loop{
         while matches!(t.weekday(),Weekday::Sat|Weekday::Sun){
             t=(t+Duration::days(1)).with_hour(9).unwrap().with_minute(0).unwrap().with_second(0).unwrap();
@@ -61,6 +61,7 @@ mod tests{
         use chrono::Local;
         let l=|d:DateTime<FixedOffset>|d.with_timezone(&Local);
         assert_eq!(next_reminder_after(l(at(2026,10,28,10,30,0))).hour(),11);
+        assert_eq!(next_reminder_after(l(at(2026,10,28,17,22,0))).format("%Y-%m-%d %H:%M").to_string(),"2026-10-28 18:00");
         assert_eq!(next_reminder_after(l(at(2026,10,28,18,5,0))).format("%Y-%m-%d %H:%M").to_string(),"2026-10-29 09:00");
         assert_eq!(next_reminder_after(l(at(2026,10,31,12,0,0))).format("%Y-%m-%d %H:%M").to_string(),"2026-11-02 09:00");
     }
