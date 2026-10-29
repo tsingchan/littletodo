@@ -6,7 +6,8 @@
     "main",
     "quick",
     "detail",
-    "settings"
+    "settings",
+    "agent-guide"
   ],
   "permissions": [
     "core:default",

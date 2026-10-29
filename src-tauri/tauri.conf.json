@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "LittleTodo",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "identifier": "com.littletodo.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",

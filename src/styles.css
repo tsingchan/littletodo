@@ -7,4 +7,4 @@
 .panel-confirm-box strong{display:block;font-size:14px;color:#183e34;margin-bottom:8px}
 .panel-confirm-box p{font-size:12px;line-height:1.5;margin-bottom:14px;color:#5a7268}
 .panel-confirm-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
-.panel-confirm-actions .primary,.panel-confirm-actions .subtle{padding:7px 12px;font-size:12px}.settings-version{font-size:11px;color:#8ba094}
+.panel-confirm-actions .primary,.panel-confirm-actions .subtle{padding:7px 12px;font-size:12px}.agent-guide-entry{display:grid;gap:6px}.agent-guide-entry button{align-self:start}.agent-guide-lead{font-size:12px;color:#6a8074;margin:0 0 12px}.agent-guide-body{max-height:calc(100vh - 140px);overflow:auto;border:1px solid #d4e2da;border-radius:12px;padding:16px;background:#fff}.settings-version{font-size:11px;color:#8ba094}

@@ -256,6 +256,16 @@ async fn open_settings(app:tauri::AppHandle)->db::Result<()> {
     Ok(())
 }
 #[tauri::command]
+fn get_agent_readonly_doc()->Result<String,String>{
+    Ok(include_str!("../../docs/AGENT-READONLY.md").to_string())
+}
+#[tauri::command]
+async fn open_agent_guide(app:tauri::AppHandle)->db::Result<()> {
+    if let Some(window)=app.get_webview_window("agent-guide") {window.show().map_err(|e|e.to_string())?;window.set_focus().map_err(|e|e.to_string())?;}
+    else {tauri::WebviewWindowBuilder::new(&app,"agent-guide",tauri::WebviewUrl::App("index.html".into())).title("LittleTodo · Agent 使用指南").inner_size(560.0,640.0).min_inner_size(420.0,360.0).build().map_err(|e|e.to_string())?;}
+    Ok(())
+}
+#[tauri::command]
 fn open_url(app:tauri::AppHandle,url:String)->db::Result<()> {
     let parsed=tauri::Url::parse(&url).map_err(|_|"链接格式无效")?;
     if !["http","https"].contains(&parsed.scheme()) || parsed.host_str().is_none(){return Err("只允许打开http或https链接".into());}
@@ -287,7 +297,7 @@ fn set_dirty(window:tauri::WebviewWindow,state:tauri::State<State>,dirty:bool)->
 }
 #[tauri::command]
 async fn close_aux(window:tauri::WebviewWindow)->db::Result<()>{
-    if window.label()!="quick" && window.label()!="settings" && window.label()!="detail"{return Err("无效窗口".into());}
+    if window.label()!="quick" && window.label()!="settings" && window.label()!="detail" && window.label()!="agent-guide"{return Err("无效窗口".into());}
     window.destroy().map_err(|e|e.to_string())
 }
 fn request_exit(app:&tauri::AppHandle){
@@ -408,7 +418,7 @@ pub fn run(){
             }
             if let tauri::WindowEvent::CloseRequested{api,..}=event {
                 api.prevent_close();
-                if window.label()=="quick" || window.label()=="settings" || window.label()=="detail" {
+                if window.label()=="quick" || window.label()=="settings" || window.label()=="detail" || window.label()=="agent-guide" {
                     let _=window.emit("attempt-close",());
                 } else if window.label()=="main" {
                     let state=window.state::<State>();
@@ -417,7 +427,7 @@ pub fn run(){
                 } else {let _=window.hide();}
             }
         })
-        .invoke_handler(tauri::generate_handler![list_tasks,get_task,save_task,complete_task,reorder_tasks,copy_task_to_today,new_task,app_info,get_draft,set_draft,close_aux,quit_app,set_dirty,hide_panel,show_list,test_notification,next_reminder_info,get_preferences,save_preferences,prepare_panel,attach_panel,move_panel,save_position,open_detail,current_detail_id,open_settings,open_url,open_data_dir])
+        .invoke_handler(tauri::generate_handler![list_tasks,get_task,save_task,complete_task,reorder_tasks,copy_task_to_today,new_task,app_info,get_draft,set_draft,close_aux,quit_app,set_dirty,hide_panel,show_list,test_notification,next_reminder_info,get_preferences,save_preferences,prepare_panel,attach_panel,move_panel,save_position,open_detail,current_detail_id,open_settings,open_agent_guide,get_agent_readonly_doc,open_url,open_data_dir])
         .run(tauri::generate_context!()).expect("LittleTodo启动失败");
 }
 

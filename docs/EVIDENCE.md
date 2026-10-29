@@ -125,7 +125,13 @@
 - 相对 V0.4.0：修复全局快捷键匹配与列表窗体尺寸恢复；含 V0.4.0 全部功能。
 - 验证：`npm run check` 通过（3 Markdown、13 Rust + 1 ignored）。安装包：`src-tauri/target/release/bundle/nsis/`。实机快捷键与显示待办待用户确认。
 
-## 整点提醒停留（2026-10-29，源码待新包）
+## V0.4.2 发布构建（2026-10-29）
+
+- 对象：`LittleTodo_0.4.2_x64-setup.exe`，1921242 字节，SHA256 `CDCA80FAE47098B8CCA19B9BF0087571E8244B44F1DB5DDB525F5AD7E42E79F9`；构建目录 `littletodo.exe`（4971520 字节）SHA256 `09F542F995CB2EFD9CFB8DE2293484278EA5C5ADECC85D2F077F2F36C7566265`。Authenticode 未签名。
+- 相对 V0.4.1：设置内 **Agent 使用指南** 独立窗（嵌入 `docs/AGENT-READONLY.md`）；整点提醒 `Scenario::Reminder` 与 **查看待办** / **知道了** 已随包发布。
+- 验证：`npm run check` 通过（3 Markdown、14 Rust + 1 ignored）。安装包路径：`src-tauri/target/release/bundle/nsis/LittleTodo_0.4.2_x64-setup.exe`。实机 Agent 指南窗与整点提醒待用户确认。
+
+## 整点提醒停留（2026-10-29，已含于 V0.4.2）
 
 - 需求：人暂时离开时，短 Toast 易错过，希望回到电脑前仍能看到提醒。
 - 实现：整点待办通知使用 `Scenario::Reminder` + **查看待办** / **知道了** 按钮；点击「查看待办」置顶显示列表。测试通知仍为 `Duration::Long`（约 25 秒）。最终展示受 Windows 通知策略与专注助手影响。
