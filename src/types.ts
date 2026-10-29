@@ -1,0 +1,2 @@
+export interface Task {id:string;content_markdown:string;priority:'P1'|'P2'|'P3';status:'open'|'completed';sort_order:number;created_at_utc:string;created_local_date:string;created_timezone:string;created_offset_minutes:number;updated_at_utc:string;completed_at_utc:string|null;version:number}
+export interface Preferences {color:'cream'|'mint'|'blue'|'pink';opacity:number;x:number|null;y:number|null;shortcut:string;shortcut_show_list:string;show_completed:boolean;notifications_preview:boolean}

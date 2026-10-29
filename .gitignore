@@ -1,0 +1,32 @@
+# Secrets and local credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+local.properties
+
+# Local task data, sidecars and recovery copies
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+/backups/
+/data/
+/node_modules/
+/dist/
+/src-tauri/target/
+/src-tauri/gen/
+/probes/windows-desktop/*.exe
+/probes/windows-desktop/*.log
+/.tools/
+/probes/tauri-desktop/src-tauri/target/
+/probes/tauri-desktop/node_modules/
+/probes/tauri-desktop/*.log
