@@ -1,6 +1,6 @@
 [package]
 name = "littletodo"
-version = "0.4.6"
+version = "0.4.7"
 description = "Local desktop tasks"
 edition = "2024"
 

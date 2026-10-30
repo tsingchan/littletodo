@@ -143,6 +143,12 @@
 - 相对 V0.4.5：启动写注册表时隐藏 `reg` 控制台；托盘/快捷键唤起列表改主线程并补焦点；整点提醒仅 **当天** 未完成；顶栏日期可 **回到今天**；本地 **8:00** 起自动切到当日列表。
 - 验证：`npm run tauri build` 与 `npm run check`（15 Rust + 1 ignored）。安装包：`src-tauri/target/release/bundle/nsis/LittleTodo_0.4.6_x64-setup.exe`。CMD 闪窗、过夜托盘双击、跨日提醒实机待用户确认。
 
+## V0.4.7 发布构建（2026-10-30）
+
+- 对象：`LittleTodo_0.4.7_x64-setup.exe`，1926968 字节，SHA256 `E713FF2A7826912B67AD9E7FE897D5A918DDBE2AB04DB938BC27C83C8EBFA93C`；构建目录 `littletodo.exe`（4986368 字节）SHA256 `67AB72C6364E9F925AE747E18D8CC476B2DE9C260CFA26220E9568EEA858EA94`。Authenticode 未签名。
+- 相对 V0.4.6：去掉详情页重复关闭按钮；打开编辑时详情窗优先贴在列表左/右/下方且保持完整可见。
+- 验证：`npm run tauri build` 与 `npm run check`（15 Rust + 1 ignored）。安装包：`src-tauri/target/release/bundle/nsis/LittleTodo_0.4.7_x64-setup.exe`。详情窗位置实机待用户确认。
+
 ## 整点提醒停留（2026-10-29，已含于 V0.4.2）
 
 - 需求：人暂时离开时，短 Toast 易错过，希望回到电脑前仍能看到提醒。

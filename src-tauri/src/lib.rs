@@ -158,6 +158,45 @@ fn safe_position(window:&tauri::WebviewWindow,requested:Option<(i32,i32)>)->db::
     let p=primary.position();let s=primary.size();
     Ok((p.x+(s.width as i32-400).max(0),p.y+30))
 }
+const DETAIL_LOG_W:f64=650.0;
+const DETAIL_LOG_H:f64=560.0;
+const DETAIL_PANEL_GAP:i32=12;
+fn window_fits_on_monitors(monitors:&[tauri::Monitor],x:i32,y:i32,w:i32,h:i32)->bool{
+    monitors.iter().any(|m|{let p=m.position();let s=m.size();x>=p.x&&y>=p.y&&x+w<=p.x+s.width as i32&&y+h<=p.y+s.height as i32})
+}
+fn clamp_window_pos(monitors:&[tauri::Monitor],x:i32,y:i32,w:i32,h:i32)->(i32,i32){
+    if window_fits_on_monitors(monitors,x,y,w,h){return (x,y);}
+    let m=&monitors[0];
+    let p=m.position();let s=m.size();
+    let cx=x.clamp(p.x,p.x+s.width as i32-w);
+    let cy=y.clamp(p.y,p.y+s.height as i32-h);
+    (cx,cy)
+}
+fn place_detail_beside_panel(app:&tauri::AppHandle,detail:&tauri::WebviewWindow)->Result<(),String>{
+    detail.set_size(tauri::Size::Logical(tauri::LogicalSize::new(DETAIL_LOG_W,DETAIL_LOG_H))).map_err(|e|e.to_string())?;
+    let monitors=detail.available_monitors().map_err(|e|e.to_string())?;
+    if monitors.is_empty(){return Err("无法获取显示器信息".into());}
+    let dw=detail.outer_size().map_err(|e|e.to_string())?.width as i32;
+    let dh=detail.outer_size().map_err(|e|e.to_string())?.height as i32;
+    let (mut x,mut y)=if let Some(main)=app.get_webview_window("main"){
+        let pos=main.outer_position().map_err(|e|e.to_string())?;
+        let size=main.outer_size().map_err(|e|e.to_string())?;
+        let panel_x=pos.x;
+        let panel_y=pos.y;
+        let panel_w=size.width as i32;
+        let panel_h=size.height as i32;
+        let candidates=[(panel_x-dw-DETAIL_PANEL_GAP,panel_y),(panel_x+panel_w+DETAIL_PANEL_GAP,panel_y),(panel_x,panel_y+panel_h+DETAIL_PANEL_GAP)];
+        let mut chosen=candidates[0];
+        for c in candidates{if window_fits_on_monitors(&monitors,c.0,c.1,dw,dh){chosen=c;break;}}
+        chosen
+    }else{
+        let primary=detail.primary_monitor().map_err(|e|e.to_string())?.unwrap_or(monitors[0].clone());
+        let p=primary.position();let s=primary.size();
+        (p.x+(s.width as i32-dw)/2,p.y+40)
+    };
+    (x,y)=clamp_window_pos(&monitors,x,y,dw,dh);
+    detail.set_position(tauri::PhysicalPosition::new(x,y)).map_err(|e|e.to_string())
+}
 const PANEL_DEF_W:f64=380.0;
 const PANEL_DEF_H:f64=460.0;
 static PANEL_RESIZE_GEN:AtomicU64=AtomicU64::new(0);
@@ -245,6 +284,7 @@ async fn open_detail(app:tauri::AppHandle,state:tauri::State<'_,State>,id:String
     with_db(&state,|db|db.get(&id))?;
     const LABEL:&str="detail";
     if let Some(window)=app.get_webview_window(LABEL) {
+        place_detail_beside_panel(&app,&window).map_err(|e|e.to_string())?;
         window.show().map_err(|e|e.to_string())?;window.set_focus().map_err(|e|e.to_string())?;
         let dirty=state.dirty_windows.lock().map_err(|_|"窗口状态不可用")?.contains(LABEL);
         if dirty {
@@ -261,8 +301,11 @@ async fn open_detail(app:tauri::AppHandle,state:tauri::State<'_,State>,id:String
     } else {
         *state.detail_task_id.lock().map_err(|_|"窗口状态不可用")?=Some(id.clone());
         let window=tauri::WebviewWindowBuilder::new(&app,LABEL,tauri::WebviewUrl::App("index.html".into()))
-            .title("LittleTodo · 事项详情").inner_size(650.0,560.0).min_inner_size(480.0,420.0)
+            .title("LittleTodo · 事项详情").inner_size(DETAIL_LOG_W,DETAIL_LOG_H).min_inner_size(480.0,420.0)
             .build().map_err(|e|e.to_string())?;
+        place_detail_beside_panel(&app,&window).map_err(|e|e.to_string())?;
+        let _=window.show();
+        let _=window.set_focus();
         let _=window.emit("detail-open",serde_json::json!({"id":id}));
     } Ok(())
 }
