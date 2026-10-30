@@ -9,9 +9,9 @@ function shiftLocalDate(iso:string,delta:number){const [y,m,day]=iso.split('-').
 function formatDayLabel(iso:string){const [y,m,day]=iso.split('-').map(Number);return new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',weekday:'short'}).format(new Date(y,m-1,day));}
 export async function setupPanel(){
  document.documentElement.classList.add('panel-root');document.body.classList.add('panel-body');
- root.innerHTML='<div class="panel"><header class="panel-header" id="panel-drag"><div class="brand"><span class="mark">✓</span><div><strong>LittleTodo</strong></div></div><div class="date-nav"><button id="day-prev" type="button" class="icon-button day-step" aria-label="前一天">‹</button><span id="date" class="date-label"></span><button id="day-next" type="button" class="icon-button day-step" aria-label="后一天">›</button></div><div class="header-actions"><button id="add" class="icon-button" title="快速记录" aria-label="快速记录">＋</button><button id="settings" class="icon-button" title="设置" aria-label="设置">⚙</button><button id="hide" class="icon-button" title="收起到托盘" aria-label="收起">−</button></div></header><section class="list-top"><span>待办事项</span><span class="count" id="count">0</span></section><div id="scroll" class="scroll"><div id="open-list" class="task-list"></div><div id="empty" class="empty"><span>✓</span><strong id="empty-title">今天有点轻松</strong><small id="empty-hint">点击右上角 ＋，记下一件事</small></div><details id="done-section" class="done"><summary>已完成 <span id="done-count">0</span></summary><div id="done-list" class="task-list"></div></details></div><p id="next-reminder" class="panel-reminder"></p><div class="panel-footer"><span id="hint">Ctrl + Alt + N 快速记录</span><button id="quit" class="quiet">退出</button></div><div id="error" class="panel-error" role="alert"></div><div id="copy-confirm" class="panel-confirm" hidden role="dialog" aria-modal="true" aria-labelledby="copy-confirm-title"><div class="panel-confirm-box"><strong id="copy-confirm-title">复制到今日</strong><p>今天已有相同事项，是否再复制一份？</p><div class="panel-confirm-actions"><button type="button" id="copy-cancel" class="subtle">取消</button><button type="button" id="copy-ok" class="primary">仍要复制</button></div></div></div><span class="panel-resize panel-resize-e" aria-hidden="true"></span><span class="panel-resize panel-resize-s" aria-hidden="true"></span><span class="panel-resize panel-resize-se" title="拖动放大窗口" aria-label="拖动放大窗口"></span></div>';
+ root.innerHTML='<div class="panel"><header class="panel-header" id="panel-drag"><div class="brand"><span class="mark">✓</span><div><strong>LittleTodo</strong></div></div><div class="date-nav"><button id="day-prev" type="button" class="icon-button day-step" aria-label="前一天">‹</button><button id="day-center" type="button" class="date-label is-today">今天</button><button id="day-next" type="button" class="icon-button day-step" aria-label="后一天">›</button></div><div class="header-actions"><button id="add" class="icon-button" title="快速记录" aria-label="快速记录">＋</button><button id="settings" class="icon-button" title="设置" aria-label="设置">⚙</button><button id="hide" class="icon-button" title="收起到托盘" aria-label="收起">−</button></div></header><section class="list-top"><span>待办事项</span><span class="count" id="count">0</span></section><div id="scroll" class="scroll"><div id="open-list" class="task-list"></div><div id="empty" class="empty"><span>✓</span><strong id="empty-title">今天有点轻松</strong><small id="empty-hint">点击右上角 ＋，记下一件事</small></div><details id="done-section" class="done"><summary>已完成 <span id="done-count">0</span></summary><div id="done-list" class="task-list"></div></details></div><p id="next-reminder" class="panel-reminder"></p><div class="panel-footer"><span id="hint">Ctrl + Alt + N 快速记录</span><button id="quit" class="quiet">退出</button></div><div id="error" class="panel-error" role="alert"></div><div id="copy-confirm" class="panel-confirm" hidden role="dialog" aria-modal="true" aria-labelledby="copy-confirm-title"><div class="panel-confirm-box"><strong id="copy-confirm-title">复制到今日</strong><p>今天已有相同事项，是否再复制一份？</p><div class="panel-confirm-actions"><button type="button" id="copy-cancel" class="subtle">取消</button><button type="button" id="copy-ok" class="primary">仍要复制</button></div></div></div><span class="panel-resize panel-resize-e" aria-hidden="true"></span><span class="panel-resize panel-resize-s" aria-hidden="true"></span><span class="panel-resize panel-resize-se" title="拖动放大窗口" aria-label="拖动放大窗口"></span></div>';
  let prefs=await invoke<Preferences>('get_preferences');let tasks:Task[]=[];let dragging:string|null=null;
- let viewDate=todayLocal();const today=todayLocal();
+ let viewDate=todayLocal();let autoTodayMarker='';
  const copyDialog=document.querySelector<HTMLElement>('#copy-confirm')!;
  let copyResolve:((ok:boolean)=>void)|null=null;
  function askCopyDuplicate(){return new Promise<boolean>(resolve=>{copyResolve=resolve;copyDialog.hidden=false;document.querySelector<HTMLButtonElement>('#copy-ok')!.focus();});}
@@ -21,7 +21,12 @@ export async function setupPanel(){
  function appearance(p:Preferences){prefs=p;root.style.setProperty('--paper','rgba('+(colors[p.color]??colors.cream)+','+p.opacity+')');document.querySelector('#hint')!.textContent=p.shortcut_show_list+' 显示待办 · '+p.shortcut+' 快速记录';}
  async function updateNextReminder(){try{const info=await invoke<{label:string}>('next_reminder_info');document.querySelector('#next-reminder')!.textContent=info.label;}catch{document.querySelector('#next-reminder')!.textContent='';}}
  function updateDayNav(){
-   document.querySelector('#date')!.textContent=formatDayLabel(viewDate);
+   const today=todayLocal();
+   const center=document.querySelector<HTMLButtonElement>('#day-center')!;
+   center.textContent=viewDate===today?'今天':formatDayLabel(viewDate);
+   center.classList.toggle('is-today',viewDate===today);
+   center.title=viewDate===today?'今天':`查看 ${formatDayLabel(viewDate)}，点击回到今天`;
+   center.setAttribute('aria-label',center.title);
    const next=document.querySelector<HTMLButtonElement>('#day-next')!;
    next.disabled=viewDate>=today;
    const emptyTitle=document.querySelector('#empty-title')!;
@@ -29,8 +34,16 @@ export async function setupPanel(){
    if(viewDate===today){emptyTitle.textContent='今天有点轻松';emptyHint.textContent='点击右上角 ＋，记下一件事';}
    else{emptyTitle.textContent='这一天没有事项';emptyHint.textContent='可用右侧复制按钮把历史事项加到今日';}
  }
- appearance(prefs);updateDayNav();
- const refresh=async()=>{try{tasks=await invoke<Task[]>('list_tasks',{localDate:viewDate});draw();await updateNextReminder();}catch(e){showError(e);}};
+ function syncAutoToday(){
+   const now=new Date();
+   const today=todayLocal();
+   if(now.getHours()<8)return;
+   if(autoTodayMarker===today)return;
+   autoTodayMarker=today;
+   if(viewDate!==today){viewDate=today;updateDayNav();void refresh();}
+ }
+ appearance(prefs);updateDayNav();syncAutoToday();
+ const refresh=async()=>{syncAutoToday();try{tasks=await invoke<Task[]>('list_tasks',{localDate:viewDate});draw();await updateNextReminder();}catch(e){showError(e);}};
  function draw(){
    const open=tasks.filter(t=>t.status==='open'),done=tasks.filter(t=>t.status==='completed');
    const openList=document.querySelector('#open-list')!,doneList=document.querySelector('#done-list')!;
@@ -57,11 +70,11 @@ export async function setupPanel(){
    const actions=document.createElement('div');actions.className='row-actions';
    const edit=document.createElement('button');edit.className='row-action';edit.title='编辑';edit.setAttribute('aria-label','编辑事项');edit.textContent='✎';edit.addEventListener('click',()=>openDetail(task.id).catch(showError));
    const copy=document.createElement('button');copy.className='row-action';copy.title='复制到今日';copy.setAttribute('aria-label','复制到今日');copy.textContent='⎘';copy.addEventListener('click',async()=>{copy.disabled=true;try{
-     const todayTasks=await invoke<Task[]>('list_tasks',{localDate:today});
+     const todayTasks=await invoke<Task[]>('list_tasks',{localDate:todayLocal()});
      const dup=todayTasks.some(t=>t.content_markdown===task.content_markdown&&t.priority===task.priority);
      if(dup&&!await askCopyDuplicate())return;
      await invoke('copy_task_to_today',{input:{command_id:uid(),source_id:task.id}});
-     if(viewDate===today)await refresh();
+     if(viewDate===todayLocal())await refresh();
    }catch(e){showError(e);}finally{copy.disabled=false;}});
    actions.append(edit,copy);
    item.append(check,priority,text,actions);return item;
@@ -76,7 +89,8 @@ export async function setupPanel(){
  const scroller=document.querySelector<HTMLElement>('#scroll')!;
  scroller.addEventListener('dragover',e=>{if(!dragging)return;const rect=scroller.getBoundingClientRect();if(e.clientY<rect.top+35)scroller.scrollTop-=16;else if(e.clientY>rect.bottom-35)scroller.scrollTop+=16;});
  on('#day-prev','click',()=>{viewDate=shiftLocalDate(viewDate,-1);updateDayNav();void refresh();});
- on('#day-next','click',()=>{if(viewDate>=today)return;viewDate=shiftLocalDate(viewDate,1);updateDayNav();void refresh();});
+ on('#day-next','click',()=>{const today=todayLocal();if(viewDate>=today)return;viewDate=shiftLocalDate(viewDate,1);updateDayNav();void refresh();});
+ on('#day-center','click',()=>{const today=todayLocal();if(viewDate===today)return;viewDate=today;updateDayNav();void refresh();});
  on('#add','click',()=>invoke('new_task').catch(showError));on('#settings','click',()=>invoke('open_settings').catch(showError));on('#hide','click',()=>invoke('hide_panel').catch(showError));on('#quit','click',()=>invoke('quit_app').catch(showError));
  await listen('tasks-changed',refresh);await listen('refresh-tasks',refresh);await listen<Preferences>('preferences-changed',event=>appearance(event.payload));await listen('desktop-error',event=>showError(event.payload));
  const info=await invoke<{shortcut_error:string|null;tray_error:string|null}>('app_info');if(info.shortcut_error||info.tray_error)showError(info.shortcut_error||info.tray_error);
@@ -90,5 +104,5 @@ export async function setupPanel(){
  }
  try{await invoke('prepare_panel');}catch(e){showError('无法初始化列表窗口：'+String(e));}
  await refresh();
- setInterval(()=>{void updateNextReminder();},60_000);
+ setInterval(()=>{syncAutoToday();void updateNextReminder();},60_000);
 }

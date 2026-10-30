@@ -25,6 +25,8 @@ mod inner {
 
     fn write_reg_value(key: &str, value_name: Option<&str>, data: &str) -> Result<(), String> {
         use std::process::Command;
+        #[cfg(windows)]
+        use std::os::windows::process::CommandExt;
         let mut args = vec![
             "add".to_string(),
             format!(r"HKCU\{key}"),
@@ -40,8 +42,11 @@ mod inner {
         } else {
             args.insert(2, "/ve".into());
         }
-        let status = Command::new("reg")
-            .args(&args)
+        let mut cmd = Command::new("reg");
+        cmd.args(&args);
+        #[cfg(windows)]
+        cmd.creation_flags(0x0800_0000);
+        let status = cmd
             .status()
             .map_err(|e| format!("无法写入通知注册表：{e}"))?;
         if status.success() {

@@ -137,6 +137,12 @@
 - 相对 V0.4.2：修正列表「下次提醒」为工作日 9–18 **整点**；待办列表支持右/底/角拖动**放大**（380×460 为默认且最小，尺寸持久化）。
 - 验证：`npm run check` 通过（3 Markdown、14 Rust + 1 ignored）。安装包：`src-tauri/target/release/bundle/nsis/LittleTodo_0.4.5_x64-setup.exe`。整点文案与列表缩放实机待用户确认。
 
+## V0.4.6 发布构建（2026-10-30）
+
+- 对象：`LittleTodo_0.4.6_x64-setup.exe`，1926532 字节，SHA256 `744DEF5FBD976A624BA27FB70A1AD51F8D7BFE2D060E1D2E5BA73A9A99262ECA`；构建目录 `littletodo.exe`（4983296 字节）SHA256 `1ECF9B4DBC7F1090D3581408D60B561D244622B435E34FB2676703D5CE7042CB`。Authenticode 未签名。
+- 相对 V0.4.5：启动写注册表时隐藏 `reg` 控制台；托盘/快捷键唤起列表改主线程并补焦点；整点提醒仅 **当天** 未完成；顶栏日期可 **回到今天**；本地 **8:00** 起自动切到当日列表。
+- 验证：`npm run tauri build` 与 `npm run check`（15 Rust + 1 ignored）。安装包：`src-tauri/target/release/bundle/nsis/LittleTodo_0.4.6_x64-setup.exe`。CMD 闪窗、过夜托盘双击、跨日提醒实机待用户确认。
+
 ## 整点提醒停留（2026-10-29，已含于 V0.4.2）
 
 - 需求：人暂时离开时，短 Toast 易错过，希望回到电脑前仍能看到提醒。

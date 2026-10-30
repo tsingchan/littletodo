@@ -84,7 +84,7 @@ fn show_quick(app:&tauri::AppHandle) {
         if let Some(state)=handle.try_state::<State>(){state.quick_opening.store(false,std::sync::atomic::Ordering::SeqCst);}
         match result {
             Ok(window)=>{let _=window.set_focus();},
-            Err(error)=>{let _=handle.emit_to("main","desktop-error",format!("无法打开快速记录：{error}"));show_panel(&handle,true);}
+            Err(error)=>{let _=handle.emit_to("main","desktop-error",format!("无法打开快速记录：{error}"));schedule_show_panel(&handle,true);}
         }
     });
 }
@@ -344,7 +344,21 @@ fn show_panel(app:&tauri::AppHandle,raise:bool){
         let _=window.show();
         let _=window.set_focus();
         let _=window.emit("refresh-tasks",());
+        let retry=window.clone();
+        let app2=app.clone();
+        std::thread::spawn(move||{
+            std::thread::sleep(std::time::Duration::from_millis(120));
+            let _=app2.run_on_main_thread(move||{
+                let _=retry.show();
+                if raise{let _=retry.set_always_on_top(true);}
+                let _=retry.set_focus();
+            });
+        });
     }
+}
+fn schedule_show_panel(app:&tauri::AppHandle,raise:bool){
+    let show=app.clone();
+    let _=app.run_on_main_thread(move||show_panel(&show,raise));
 }
 #[tauri::command]
 fn hide_panel(window:tauri::WebviewWindow,state:tauri::State<State>)->db::Result<()>{
@@ -354,7 +368,7 @@ fn hide_panel(window:tauri::WebviewWindow,state:tauri::State<State>)->db::Result
     window.hide().map_err(|e|e.to_string())
 }
 #[tauri::command]
-fn show_list(app:tauri::AppHandle){show_panel(&app,true);}
+fn show_list(app:tauri::AppHandle){schedule_show_panel(&app,true);}
 #[tauri::command]
 fn next_reminder_info(state:tauri::State<State>)->db::Result<serde_json::Value>{
     let next=reminder::next_reminder_after(chrono::Local::now());
@@ -379,13 +393,13 @@ fn create_tray(app:&tauri::App)->tauri::Result<()> {
     let icon=app.default_window_icon().ok_or_else(||tauri::Error::AssetNotFound("icon".into()))?.clone();
     TrayIconBuilder::with_id("littletodo").icon(icon).tooltip("LittleTodo").menu(&menu).show_menu_on_left_click(false)
         .on_menu_event(|app,event|match event.id().as_ref(){
-            "show"=>show_panel(app,true),"quick"=>show_quick(app),
+            "show"=>schedule_show_panel(app,true),"quick"=>show_quick(app),
             "settings"=>{let app=app.clone();tauri::async_runtime::spawn(async move {let _=open_settings(app).await;});},
             "quit"=>request_exit(app),_=>{}
         })
         .on_tray_icon_event(|tray,event|{
             if let TrayIconEvent::DoubleClick{button:MouseButton::Left,..}=event{
-                show_panel(tray.app_handle(),true);
+                schedule_show_panel(tray.app_handle(),true);
             }
         })
         .build(app)?;
@@ -401,7 +415,7 @@ pub fn run(){
             let show_list=state.shortcut_show_list.lock().ok().map(|v|v.clone());
             if let (Some(quick),Some(show_list))=(quick,show_list){
                 if shortcut_matches(&quick,shortcut){show_quick(app);}
-                else if shortcut_matches(&show_list,shortcut){show_panel(app,true);}
+                else if shortcut_matches(&show_list,shortcut){schedule_show_panel(app,true);}
             }
         }).build())
         .plugin(tauri_plugin_opener::Builder::new().open_js_links_on_click(false).build())

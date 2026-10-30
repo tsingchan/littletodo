@@ -123,7 +123,11 @@ impl Db {
         statement.query_map([date],read_task).map_err(sql)?.collect::<std::result::Result<Vec<_>,_>>().map_err(sql)
     }
     pub fn count_open_tasks(&self)->Result<i64>{
-        self.conn.query_row("SELECT COUNT(*) FROM tasks WHERE status='open'",[],|r|r.get(0)).map_err(sql)
+        self.count_open_tasks_for_date(&stamp().date)
+    }
+    pub fn count_open_tasks_for_date(&self,date:&str)->Result<i64>{
+        validate_local_date(date)?;
+        self.conn.query_row("SELECT COUNT(*) FROM tasks WHERE status='open' AND created_local_date=?1",[date],|r|r.get(0)).map_err(sql)
     }
     pub fn get(&self,id:&str)->Result<Task>{get(&self.conn,id)}
     pub fn save(&mut self, input: SaveTask) -> Result<Task> {
@@ -211,8 +215,9 @@ impl Db {
         let tx=self.conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).map_err(sql)?;
         let exists:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM reminder_slots WHERE slot_key=?1)",[slot],|r|r.get(0)).map_err(sql)?;
         if exists{return Ok(None);}
-        let tasks={let mut query=tx.prepare("SELECT * FROM tasks WHERE status='open' ORDER BY sort_order,id").map_err(sql)?;
-            let rows=query.query_map([],read_task).map_err(sql)?;rows.collect::<std::result::Result<Vec<_>,_>>().map_err(sql)?};
+        let today=stamp().date;
+        let tasks={let mut query=tx.prepare("SELECT * FROM tasks WHERE status='open' AND created_local_date=?1 ORDER BY sort_order,id").map_err(sql)?;
+            let rows=query.query_map([&today],read_task).map_err(sql)?;rows.collect::<std::result::Result<Vec<_>,_>>().map_err(sql)?};
         let status=if tasks.is_empty(){"skipped_empty"}else{"claimed"};
         tx.execute("INSERT INTO reminder_slots VALUES(?1,?2,?3,?4,?5)",params![slot,scheduled_utc,stamp().utc,status,tasks.len() as i64]).map_err(sql)?;
         tx.commit().map_err(sql)?;
@@ -237,6 +242,7 @@ mod tests {
     #[test] fn list_for_date_and_copy_to_today(){let mut db=db();let task=db.save(input("history")).unwrap();assert_eq!(db.list_for_date(&task.created_local_date).unwrap().len(),1);let copy=db.copy_to_today(CopyTaskToToday{command_id:Uuid::new_v4().to_string(),source_id:task.id.clone()}).unwrap();assert_ne!(copy.id,task.id);assert_eq!(copy.content_markdown,task.content_markdown);assert_eq!(db.list().unwrap().len(),2);}
     #[test] fn reopen_file_and_read_only_analysis(){let path=std::env::temp_dir().join(format!("littletodo-test-{}.sqlite3",Uuid::new_v4()));{let mut db=Db::open(&path).unwrap();db.save(input("persist")).unwrap();} {let db=Db::open(&path).unwrap();assert_eq!(db.list().unwrap().len(),1);let ro=Connection::open_with_flags(&path,rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();assert_eq!(ro.query_row("SELECT COUNT(*) FROM v_tasks_readable",[],|r|r.get::<_,i64>(0)).unwrap(),1);assert!(ro.execute("DELETE FROM tasks",[]).is_err());} let _=std::fs::remove_file(path);}
     #[test] fn rejects_future_database(){let db=db();db.conn.pragma_update(None,"user_version",99).unwrap();let tmp=std::env::temp_dir().join(format!("littletodo-future-{}.db",Uuid::new_v4()));db.conn.backup(rusqlite::MAIN_DB,&tmp,None).unwrap();assert!(Db::open(&tmp).is_err());let _=std::fs::remove_file(tmp);}
+    #[test] fn reminder_only_counts_today_open(){let mut db=db();db.save(input("yesterday")).unwrap();db.conn.execute("UPDATE tasks SET created_local_date='2000-01-01' WHERE content_markdown='yesterday'",[]).unwrap();assert!(db.claim_reminder("slot-today","2026-10-28T02:00:00Z").unwrap().is_none());db.save(input("today")).unwrap();assert_eq!(db.claim_reminder("slot-today2","2026-10-28T03:00:00Z").unwrap().unwrap().len(),1);}
     #[test] fn reminder_empty_and_duplicate_slots_are_not_sent(){let mut db=db();assert!(db.claim_reminder("empty","2026-10-28T01:00:00Z").unwrap().is_none());db.save(input("one")).unwrap();assert!(db.claim_reminder("empty","2026-10-28T01:00:00Z").unwrap().is_none());assert_eq!(db.claim_reminder("next","2026-10-28T02:00:00Z").unwrap().unwrap().len(),1);assert!(db.claim_reminder("next","2026-10-28T02:00:00Z").unwrap().is_none());db.finish_reminder("next",true).unwrap();assert_eq!(db.conn.query_row("SELECT status FROM reminder_slots WHERE slot_key='next'",[],|r|r.get::<_,String>(0)).unwrap(),"submitted");}
 }
 
