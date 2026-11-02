@@ -78,15 +78,21 @@ fn show_quick(app:&tauri::AppHandle) {
     let Some(state)=app.try_state::<State>() else {return;};
     if state.quick_opening.swap(true,std::sync::atomic::Ordering::SeqCst){return;}
     let handle=app.clone();
-    tauri::async_runtime::spawn(async move {
-        let result=tauri::WebviewWindowBuilder::new(&handle,"quick",tauri::WebviewUrl::App("index.html".into()))
-            .title("LittleTodo · 快速记录").inner_size(560.0,420.0).min_inner_size(420.0,320.0).center().build();
+    let finish=|handle:&tauri::AppHandle,result:Result<tauri::WebviewWindow,tauri::Error>|{
         if let Some(state)=handle.try_state::<State>(){state.quick_opening.store(false,std::sync::atomic::Ordering::SeqCst);}
         match result {
-            Ok(window)=>{let _=window.set_focus();},
-            Err(error)=>{let _=handle.emit_to("main","desktop-error",format!("无法打开快速记录：{error}"));schedule_show_panel(&handle,true);}
+            Ok(window)=>{let _=window.set_focus();}
+            Err(error)=>{let _=handle.emit_to("main","desktop-error",format!("无法打开快速记录：{error}"));schedule_show_panel(handle,true);}
         }
-    });
+    };
+    if let Err(error)=app.run_on_main_thread(move||{
+        let result=tauri::WebviewWindowBuilder::new(&handle,"quick",tauri::WebviewUrl::App("index.html".into()))
+            .title("LittleTodo · 快速记录").inner_size(560.0,420.0).min_inner_size(420.0,320.0).center().build();
+        finish(&handle,result);
+    }) {
+        state.quick_opening.store(false,std::sync::atomic::Ordering::SeqCst);
+        let _=app.emit_to("main","desktop-error",format!("无法打开快速记录：{error}"));
+    }
 }
 #[tauri::command]
 fn list_tasks(state:tauri::State<State>,local_date:String)->db::Result<Vec<Task>> {

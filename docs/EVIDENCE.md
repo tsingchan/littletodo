@@ -149,6 +149,12 @@
 - 相对 V0.4.6：去掉详情页重复关闭按钮；打开编辑时详情窗优先贴在列表左/右/下方且保持完整可见。
 - 验证：`npm run tauri build` 与 `npm run check`（15 Rust + 1 ignored）。安装包：`src-tauri/target/release/bundle/nsis/LittleTodo_0.4.7_x64-setup.exe`。详情窗位置实机待用户确认。
 
+## V0.4.8 发布构建（2026-11-02）
+
+- 对象：`LittleTodo_0.4.8_x64-setup.exe`，1926686 字节，SHA256 `3613E33DE5E89F0A55B2369E4FADDC0A99B36C02CBAE2AD662AE45BD59357FB5`；构建目录 `littletodo.exe`（4983296 字节）SHA256 `DD81196E868194186066D7FA6DD232ADE2C486F47B3F2A231BC59C35B9F47204`。Authenticode 未签名。
+- 相对 V0.4.7：快速记录窗改在 **UI 主线程** 创建，修复 WebView2 `0x80010108` 导致的一闪失败。
+- 验证：`npm run tauri build` 与 `npm run check`（15 Rust + 1 ignored）。安装包：`src-tauri/target/release/bundle/nsis/LittleTodo_0.4.8_x64-setup.exe`。快速记录打开实机待用户确认。
+
 ## 整点提醒停留（2026-10-29，已含于 V0.4.2）
 
 - 需求：人暂时离开时，短 Toast 易错过，希望回到电脑前仍能看到提醒。
